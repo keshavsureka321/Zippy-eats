@@ -1,0 +1,773 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+# Load data
+profiles = pd.read_csv(r"C:\Users\Keshav\Downloads\zippyeats restaurant profiles.csv")
+trends   = pd.read_csv(r"C:\Users\Keshav\Downloads\zippyeats monthly trends.csv")
+
+# 1. Shape
+print("=== SHAPE ===")
+print("Profiles :", profiles.shape)
+print("Trends   :", trends.shape)
+
+# 2. Column names
+print("\n=== COLUMNS ===")
+print("Profiles :", profiles.columns.tolist())
+print("Trends   :", trends.columns.tolist())
+
+# 3. Data types
+print("\n=== DATA TYPES (Profiles) ===")
+print(profiles.dtypes)
+
+print("\n=== DATA TYPES (Trends) ===")
+print(trends.dtypes)
+
+# 4. Missing values
+print("\n=== MISSING VALUES (Profiles) ===")
+print(profiles.isnull().sum())
+
+print("\n=== MISSING VALUES (Trends) ===")
+print(trends.isnull().sum())
+
+# 5. Summary statistics
+print("\n=== SUMMARY STATISTICS (Profiles) ===")
+print(profiles.describe())
+
+print("\n=== SUMMARY STATISTICS (Trends) ===")
+print(trends.describe())
+
+# 6. First 5 rows
+print("\n=== FIRST 5 ROWS (Profiles) ===")
+print(profiles.head())
+
+print("\n=== FIRST 5 ROWS (Trends) ===")
+print(trends.head())
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2 — UNIVARIATE ANALYSIS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Plot 1: Cancellation Rate Distribution ────────────────────────────────────
+plt.figure(figsize=(7, 4))
+plt.hist(profiles['cancellation_rate_pct'], bins=15, color='steelblue', edgecolor='white')
+plt.axvline(x=profiles['cancellation_rate_pct'].mean(), color='red', linestyle='--',
+            label=f"Mean: {profiles['cancellation_rate_pct'].mean():.1f}%")
+plt.title("Distribution of Cancellation Rate")
+plt.xlabel("Cancellation Rate (%)")
+plt.ylabel("Number of Restaurants")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+print("Cancellation Rate Stats:")
+print(profiles['cancellation_rate_pct'].describe())
+
+
+# ── Plot 2: Customer Rating Distribution ──────────────────────────────────────
+plt.figure(figsize=(7, 4))
+plt.hist(profiles['avg_customer_rating'], bins=15, color='mediumseagreen', edgecolor='white')
+plt.axvline(x=4.2, color='red', linestyle='--', label='Target: 4.2')
+plt.axvline(x=profiles['avg_customer_rating'].mean(), color='orange', linestyle='--',
+            label=f"Mean: {profiles['avg_customer_rating'].mean():.2f}")
+plt.title("Distribution of Customer Ratings")
+plt.xlabel("Avg Customer Rating")
+plt.ylabel("Number of Restaurants")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+# ── Plot 3: Restaurants by Zone ───────────────────────────────────────────────
+plt.figure(figsize=(7, 4))
+zone_counts = profiles['city_zone'].value_counts()
+plt.bar(zone_counts.index, zone_counts.values, color='steelblue', edgecolor='white')
+plt.title("Number of Restaurants by Zone")
+plt.xlabel("Zone")
+plt.ylabel("Count")
+plt.xticks(rotation=20)
+plt.tight_layout()
+plt.show()
+
+print("\nRestaurants per Zone:")
+print(zone_counts)
+
+
+# ── Plot 4: Restaurants by Cuisine ────────────────────────────────────────────
+plt.figure(figsize=(7, 4))
+cuisine_counts = profiles['cuisine_type'].value_counts()
+plt.barh(cuisine_counts.index, cuisine_counts.values, color='coral', edgecolor='white')
+plt.title("Number of Restaurants by Cuisine")
+plt.xlabel("Count")
+plt.tight_layout()
+plt.show()
+
+print("\nRestaurants per Cuisine:")
+print(cuisine_counts)
+
+
+# ── Plot 5: Avg Cancellation Rate by Cuisine ──────────────────────────────────
+plt.figure(figsize=(7, 4))
+cancel_by_cuisine = profiles.groupby('cuisine_type')['cancellation_rate_pct'].mean().sort_values()
+plt.barh(cancel_by_cuisine.index, cancel_by_cuisine.values, color='tomato', edgecolor='white')
+plt.axvline(x=profiles['cancellation_rate_pct'].mean(), color='black', linestyle='--',
+            label=f"Platform avg: {profiles['cancellation_rate_pct'].mean():.1f}%")
+plt.title("Avg Cancellation Rate by Cuisine")
+plt.xlabel("Avg Cancellation Rate (%)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+# ── Plot 6: Active vs Churned by Zone ─────────────────────────────────────────
+plt.figure(figsize=(7, 4))
+zone_status = profiles.groupby('city_zone')['is_active'].value_counts().unstack(fill_value=0)
+zone_status.columns = ['Churned', 'Active']
+zone_status[['Active', 'Churned']].plot(kind='bar', color=['steelblue', 'tomato'],
+                                         edgecolor='white', figsize=(7, 4))
+plt.title("Active vs Churned Restaurants by Zone")
+plt.xlabel("")
+plt.ylabel("Count")
+plt.xticks(rotation=20)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+print("\nChurn Rate by Zone:")
+zone_status['churn_rate_%'] = (zone_status['Churned'] /
+                                (zone_status['Active'] + zone_status['Churned']) * 100).round(1)
+print(zone_status)
+
+
+# ── Plot 7: Onboarding Month Distribution ─────────────────────────────────────
+plt.figure(figsize=(7, 4))
+plt.hist(profiles['onboarding_month'], bins=18, color='mediumpurple', edgecolor='white')
+plt.title("When Did Restaurants Join? (Onboarding Month)")
+plt.xlabel("Onboarding Month")
+plt.ylabel("Number of Restaurants")
+plt.tight_layout()
+plt.show()
+
+print("\nOnboarding Month Distribution:")
+print(profiles['onboarding_month'].value_counts().sort_index())
+
+
+# ── Plot 8: Prep Time Distribution ───────────────────────────────────────────
+plt.figure(figsize=(7, 4))
+plt.hist(profiles['avg_prep_time_min'], bins=15, color='goldenrod', edgecolor='white')
+plt.axvline(x=25, color='red', linestyle='--', label='High Prep threshold: 25 min')
+plt.axvline(x=profiles['avg_prep_time_min'].mean(), color='black', linestyle='--',
+            label=f"Mean: {profiles['avg_prep_time_min'].mean():.1f} min")
+plt.title("Distribution of Avg Prep Time")
+plt.xlabel("Avg Prep Time (minutes)")
+plt.ylabel("Number of Restaurants")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+print("\nPrep Time Stats:")
+print(profiles['avg_prep_time_min'].describe())
+
+
+
+corr = profiles['social_media_followers'].corr(profiles['cancellation_rate_pct'])
+print(f"\nPearson Correlation: {corr:.3f}")
+
+# Scatter plot
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['social_media_followers'], profiles['cancellation_rate_pct'],
+            color='steelblue', alpha=0.6, s=50)
+plt.title("Social Media Followers vs Cancellation Rate")
+plt.xlabel("Social Media Followers")
+plt.ylabel("Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+# Bucket followers into Low / Medium / High and compare
+profiles['followers_bucket'] = pd.cut(profiles['social_media_followers'],
+                                       bins=3,
+                                       labels=['Low', 'Medium', 'High'])
+
+grouped = profiles.groupby('followers_bucket')['cancellation_rate_pct'].mean()
+print("\nAvg Cancellation Rate by Followers Bucket:")
+print(grouped.round(2))
+
+plt.figure(figsize=(6, 4))
+plt.bar(grouped.index, grouped.values, color='steelblue', edgecolor='white')
+plt.title("Avg Cancellation Rate by Social Media Followers")
+plt.xlabel("Followers Bucket")
+plt.ylabel("Avg Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+
+
+
+parking_group = profiles.groupby('parking_available')['cancellation_rate_pct'].mean()
+parking_group.index = ['No Parking', 'Has Parking']
+print("\nAvg Cancellation Rate:")
+print(parking_group.round(2))
+
+count_by_parking = profiles['parking_available'].value_counts()
+count_by_parking.index = ['No Parking', 'Has Parking']
+print("\nNumber of Restaurants:")
+print(count_by_parking)
+
+# Bar chart
+plt.figure(figsize=(6, 4))
+plt.bar(parking_group.index, parking_group.values,
+        color=['tomato', 'steelblue'], edgecolor='white', width=0.4)
+for i, val in enumerate(parking_group.values):
+    plt.text(i, val + 0.1, f"{val:.2f}%", ha='center', fontweight='bold')
+plt.title("Avg Cancellation Rate: Parking vs No Parking")
+plt.ylabel("Avg Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+# Boxplot — distribution comparison
+plt.figure(figsize=(6, 4))
+no_park = profiles[profiles['parking_available'] == 0]['cancellation_rate_pct']
+has_park = profiles[profiles['parking_available'] == 1]['cancellation_rate_pct']
+bp = plt.boxplot([no_park, has_park], labels=['No Parking', 'Has Parking'],
+                 patch_artist=True, widths=0.4)
+bp['boxes'][0].set_facecolor('tomato')
+bp['boxes'][0].set_alpha(0.7)
+bp['boxes'][1].set_facecolor('steelblue')
+bp['boxes'][1].set_alpha(0.7)
+plt.title("Cancellation Rate Distribution: Parking vs No Parking")
+plt.ylabel("Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+# Correlation
+corr = profiles['seating_capacity'].corr(profiles['cancellation_rate_pct'])
+print(f"\nPearson Correlation: {corr:.3f}")
+
+# Summary stats
+print("\nSeating Capacity Stats:")
+print(profiles['seating_capacity'].describe().round(2))
+
+# Scatter plot
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['seating_capacity'], profiles['cancellation_rate_pct'],
+            color='mediumpurple', alpha=0.6, s=50)
+plt.title("Seating Capacity vs Cancellation Rate")
+plt.xlabel("Seating Capacity")
+plt.ylabel("Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+# Bucket seating capacity into Small / Medium / Large
+profiles['seating_bucket'] = pd.cut(profiles['seating_capacity'],
+                                     bins=[0, 30, 60, 120],
+                                     labels=['Small (0-30)', 'Medium (31-60)', 'Large (61+)'])
+
+grouped = profiles.groupby('seating_bucket').agg(
+    count        = ('restaurant_id', 'count'),
+    avg_cancel   = ('cancellation_rate_pct', 'mean'),
+    avg_rating   = ('avg_customer_rating', 'mean'),
+    churn_rate   = ('is_active', lambda x: (x == 0).mean() * 100)
+).round(2)
+
+print("\nAvg Metrics by Seating Capacity Bucket:")
+print(grouped)
+
+# Bar chart
+plt.figure(figsize=(6, 4))
+plt.bar(grouped.index, grouped['avg_cancel'],
+        color=['steelblue', 'orange', 'tomato'], edgecolor='white')
+for i, val in enumerate(grouped['avg_cancel']):
+    plt.text(i, val + 0.1, f"{val:.2f}%", ha='center', fontweight='bold')
+plt.title("Avg Cancellation Rate by Seating Capacity")
+plt.xlabel("Seating Capacity Bucket")
+plt.ylabel("Avg Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+# Boxplot
+plt.figure(figsize=(7, 4))
+small  = profiles[profiles['seating_bucket'] == 'Small (0-30)']['cancellation_rate_pct']
+medium = profiles[profiles['seating_bucket'] == 'Medium (31-60)']['cancellation_rate_pct']
+large  = profiles[profiles['seating_bucket'] == 'Large (61+)']['cancellation_rate_pct']
+
+bp = plt.boxplot([small, medium, large],
+                 labels=['Small (0-30)', 'Medium (31-60)', 'Large (61+)'],
+                 patch_artist=True, widths=0.4)
+colors = ['steelblue', 'orange', 'tomato']
+for box, color in zip(bp['boxes'], colors):
+    box.set_facecolor(color)
+    box.set_alpha(0.7)
+plt.title("Cancellation Rate Distribution by Seating Capacity")
+plt.ylabel("Cancellation Rate (%)")
+plt.tight_layout()
+plt.show()
+
+
+
+# --------------------------------------------------------------
+# Plot 1: Discount vs Order Volume
+# --------------------------------------------------------------
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['discount_offered_pct'], profiles['monthly_order_volume'],
+            color='steelblue', alpha=0.6, s=50)
+plt.title("Discount Offered vs Monthly Order Volume\n(Higher discount = more orders?)")
+plt.xlabel("Discount Offered (%)")
+plt.ylabel("Monthly Order Volume")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 2: Prep Time vs Order Volume
+# --------------------------------------------------------------
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['avg_prep_time_min'], profiles['monthly_order_volume'],
+            color='goldenrod', alpha=0.6, s=50)
+plt.title("Prep Time vs Monthly Order Volume")
+plt.xlabel("Avg Prep Time (minutes)")
+plt.ylabel("Monthly Order Volume")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 3: The key 2x2 — Discount x Prep Time
+#         showing cancellation rate AND order volume
+# --------------------------------------------------------------
+profiles['high_prep'] = profiles['avg_prep_time_min'] > 25
+profiles['high_disc'] = profiles['discount_offered_pct'] > 20
+
+interaction_cancel = profiles.groupby(['high_prep', 'high_disc'])['cancellation_rate_pct'].mean().unstack()
+interaction_orders = profiles.groupby(['high_prep', 'high_disc'])['monthly_order_volume'].mean().unstack()
+
+interaction_cancel.index = ['Normal Prep (<=25 min)', 'High Prep (>25 min)']
+interaction_cancel.columns = ['Low Discount (<=20%)', 'High Discount (>20%)']
+
+interaction_orders.index = ['Normal Prep (<=25 min)', 'High Prep (>25 min)']
+interaction_orders.columns = ['Low Discount (<=20%)', 'High Discount (>20%)']
+
+
+
+# Plot both 2x2s side by side
+fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+fig.suptitle("The Core Finding: Discount x Prep Time Interaction", fontsize=12)
+
+x = np.arange(2)
+width = 0.35
+
+# Left: Cancellation Rate
+ax = axes[0]
+ax.bar(x - width/2, interaction_cancel['Low Discount (<=20%)'],
+       width, color='steelblue', edgecolor='white', label='Low Discount (<=20%)')
+ax.bar(x + width/2, interaction_cancel['High Discount (>20%)'],
+       width, color='tomato', edgecolor='white', label='High Discount (>20%)')
+ax.set_xticks(x)
+ax.set_xticklabels(interaction_cancel.index)
+ax.set_title("Avg Cancellation Rate (%)")
+ax.set_ylabel("Cancellation Rate (%)")
+ax.legend()
+for i, (low, high) in enumerate(zip(interaction_cancel['Low Discount (<=20%)'],
+                                     interaction_cancel['High Discount (>20%)'])):
+    ax.text(i - width/2, low + 0.2, f"{low:.1f}%", ha='center', fontsize=9, fontweight='bold')
+    ax.text(i + width/2, high + 0.2, f"{high:.1f}%", ha='center', fontsize=9, fontweight='bold')
+
+# Right: Order Volume
+ax = axes[1]
+ax.bar(x - width/2, interaction_orders['Low Discount (<=20%)'],
+       width, color='steelblue', edgecolor='white', label='Low Discount (<=20%)')
+ax.bar(x + width/2, interaction_orders['High Discount (>20%)'],
+       width, color='tomato', edgecolor='white', label='High Discount (>20%)')
+ax.set_xticks(x)
+ax.set_xticklabels(interaction_orders.index)
+ax.set_title("Avg Monthly Order Volume")
+ax.set_ylabel("Number of Orders")
+ax.legend()
+for i, (low, high) in enumerate(zip(interaction_orders['Low Discount (<=20%)'],
+                                     interaction_orders['High Discount (>20%)'])):
+    ax.text(i - width/2, low + 5, f"{low:.0f}", ha='center', fontsize=9, fontweight='bold')
+    ax.text(i + width/2, high + 5, f"{high:.0f}", ha='center', fontsize=9, fontweight='bold')
+
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 4: Scatter — colour coded by cancellation severity
+# --------------------------------------------------------------
+plt.figure(figsize=(8, 5))
+
+low_cancel  = profiles[profiles['cancellation_rate_pct'] <= 4]
+mid_cancel  = profiles[(profiles['cancellation_rate_pct'] > 4) &
+                        (profiles['cancellation_rate_pct'] <= 8)]
+high_cancel = profiles[profiles['cancellation_rate_pct'] > 8]
+
+plt.scatter(low_cancel['discount_offered_pct'],  low_cancel['avg_prep_time_min'],
+            color='steelblue', alpha=0.7, s=60, label='Low Cancel (<= 4%)')
+plt.scatter(mid_cancel['discount_offered_pct'],  mid_cancel['avg_prep_time_min'],
+            color='orange',    alpha=0.7, s=60, label='Medium Cancel (4-8%)')
+plt.scatter(high_cancel['discount_offered_pct'], high_cancel['avg_prep_time_min'],
+            color='tomato',    alpha=0.8, s=80, label='High Cancel (> 8%)')
+
+plt.axvline(x=20, color='grey', linestyle='--', alpha=0.6, label='Discount threshold: 20%')
+plt.axhline(y=25, color='grey', linestyle=':',  alpha=0.6, label='Prep time threshold: 25 min')
+
+plt.title("Discount vs Prep Time — coloured by Cancellation Severity\n"
+          "(Top-right corner = danger zone)")
+plt.xlabel("Discount Offered (%)")
+plt.ylabel("Avg Prep Time (minutes)")
+plt.legend(fontsize=9)
+plt.tight_layout()
+plt.show()
+
+
+# --------------------------------------------------------------
+# Plot 1: Prep Time vs Support Tickets
+# --------------------------------------------------------------
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['avg_prep_time_min'], profiles['support_tickets_per_100_orders'],
+            color='goldenrod', alpha=0.6, s=50)
+plt.title("Prep Time vs Support Tickets per 100 Orders")
+plt.xlabel("Avg Prep Time (minutes)")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 2: Discount vs Support Tickets
+# --------------------------------------------------------------
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['discount_offered_pct'], profiles['support_tickets_per_100_orders'],
+            color='tomato', alpha=0.6, s=50)
+plt.title("Discount Offered vs Support Tickets per 100 Orders")
+plt.xlabel("Discount Offered (%)")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 3: Avg Support Tickets by Prep Time bucket
+# --------------------------------------------------------------
+profiles['prep_bucket'] = pd.cut(profiles['avg_prep_time_min'],
+                                   bins=[0, 20, 25, 35, 60],
+                                   labels=['Fast (<20 min)', 'Normal (20-25 min)',
+                                           'Slow (25-35 min)', 'Very Slow (>35 min)'])
+
+prep_tickets = profiles.groupby('prep_bucket')['support_tickets_per_100_orders'].mean()
+
+
+plt.figure(figsize=(7, 4))
+bars = plt.bar(prep_tickets.index, prep_tickets.values,
+               color=['steelblue', 'steelblue', 'orange', 'tomato'], edgecolor='white')
+for bar, val in zip(bars, prep_tickets.values):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+             f"{val:.2f}", ha='center', fontweight='bold')
+plt.title("Avg Support Tickets per 100 Orders by Prep Time")
+plt.xlabel("Prep Time Bucket")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 4: Avg Support Tickets by Discount bucket
+# --------------------------------------------------------------
+profiles['disc_bucket'] = pd.cut(profiles['discount_offered_pct'],
+                                   bins=[0, 15, 20, 25, 40],
+                                   labels=['Low (<15%)', 'Medium (15-20%)',
+                                           'High (20-25%)', 'Very High (>25%)'])
+
+disc_tickets = profiles.groupby('disc_bucket')['support_tickets_per_100_orders'].mean()
+
+
+plt.figure(figsize=(7, 4))
+bars = plt.bar(disc_tickets.index, disc_tickets.values,
+               color=['steelblue', 'steelblue', 'orange', 'tomato'], edgecolor='white')
+for bar, val in zip(bars, disc_tickets.values):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.05,
+             f"{val:.2f}", ha='center', fontweight='bold')
+plt.title("Avg Support Tickets per 100 Orders by Discount")
+plt.xlabel("Discount Bucket")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 5: 2x2 — Prep Time x Discount showing Support Tickets
+# --------------------------------------------------------------
+profiles['high_prep'] = profiles['avg_prep_time_min'] > 25
+profiles['high_disc'] = profiles['discount_offered_pct'] > 20
+
+interaction = profiles.groupby(['high_prep', 'high_disc'])['support_tickets_per_100_orders'].mean().unstack()
+interaction.index   = ['Normal Prep (<=25 min)', 'High Prep (>25 min)']
+interaction.columns = ['Low Discount (<=20%)', 'High Discount (>20%)']
+
+
+x = np.arange(2)
+width = 0.35
+
+plt.figure(figsize=(7, 4))
+plt.bar(x - width/2, interaction['Low Discount (<=20%)'],
+        width, color='steelblue', edgecolor='white', label='Low Discount (<=20%)')
+plt.bar(x + width/2, interaction['High Discount (>20%)'],
+        width, color='tomato', edgecolor='white', label='High Discount (>20%)')
+plt.xticks(x, interaction.index)
+plt.title("Avg Support Tickets: Prep Time x Discount\n(Same deadly combo — more complaints too)")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.legend()
+for i, (low, high) in enumerate(zip(interaction['Low Discount (<=20%)'],
+                                     interaction['High Discount (>20%)'])):
+    plt.text(i - width/2, low + 0.05, f"{low:.2f}", ha='center', fontsize=9, fontweight='bold')
+    plt.text(i + width/2, high + 0.05, f"{high:.2f}", ha='center', fontsize=9, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+# --------------------------------------------------------------
+# Plot 6: Support Tickets vs Cancellation Rate scatter
+# --------------------------------------------------------------
+plt.figure(figsize=(7, 4))
+plt.scatter(profiles['cancellation_rate_pct'], profiles['support_tickets_per_100_orders'],
+            color='mediumpurple', alpha=0.6, s=50)
+plt.title("Cancellation Rate vs Support Tickets\n(Tickets follow cancellations — they are an outcome)")
+plt.xlabel("Cancellation Rate (%)")
+plt.ylabel("Support Tickets per 100 Orders")
+plt.tight_layout()
+plt.show()
+
+
+# Get churned restaurant IDs
+churned_ids = profiles[profiles['is_active'] == 0]['restaurant_id'].tolist()
+
+# Calculate monthly cancellation rate
+trends['cancel_rate'] = (trends['cancellations'] / trends['order_volume'] * 100).fillna(0)
+
+# Pick 4 churned restaurants to showcase the pattern
+focus_ids = churned_ids[:4]
+
+
+
+# ==============================================================
+# SLIDE 2 — GRAPH 1: Cancellation Rate by Cuisine
+# ==============================================================
+
+fig, ax = plt.subplots(figsize=(9, 5))
+fig.patch.set_facecolor('white')
+ax.set_facecolor('#F8FAFC')
+
+cancel_by_cuisine = profiles.groupby('cuisine_type')['cancellation_rate_pct'].mean().sort_values()
+platform_avg      = profiles['cancellation_rate_pct'].mean()
+colors_cuisine    = ['#16A34A' if v < platform_avg else '#DC2626'
+                     for v in cancel_by_cuisine]
+
+bars = ax.barh(cancel_by_cuisine.index, cancel_by_cuisine.values,
+               color=colors_cuisine, edgecolor='white', linewidth=1.5)
+
+for bar, val in zip(bars, cancel_by_cuisine.values):
+    ax.text(val + 0.15, bar.get_y() + bar.get_height()/2,
+            f"{val:.1f}%", va='center', fontsize=10,
+            fontweight='bold', color='#0F172A')
+
+ax.axvline(x=platform_avg, color='#64748B', linestyle='--',
+           linewidth=1.5, label=f"Platform avg: {platform_avg:.1f}%")
+
+ax.set_title("Cancellation Rate by Cuisine Type\n(Red = above platform average)",
+             fontsize=13, fontweight='bold', color='#0F172A', pad=12)
+ax.set_xlabel("Avg Cancellation Rate (%)", fontsize=10, color='#475569')
+ax.tick_params(colors='#475569')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_color('#E2E8F0')
+ax.spines['bottom'].set_color('#E2E8F0')
+ax.legend(fontsize=9, frameon=False)
+
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_graph1_cuisine.png",
+            dpi=200, bbox_inches='tight', facecolor='white')
+plt.show()
+print("Slide 2 Graph 1 saved.")
+
+
+# ==============================================================
+# SLIDE 2 — GRAPH 2: Churn Rate by Zone
+# ==============================================================
+
+fig, ax = plt.subplots(figsize=(8, 5))
+fig.patch.set_facecolor('white')
+ax.set_facecolor('#F8FAFC')
+
+zone_churn = profiles.groupby('city_zone').agg(
+    churn_rate=('is_active', lambda x: (x == 0).mean() * 100)
+).reset_index()
+zone_churn['zone_short'] = zone_churn['city_zone'].str.split(' - ').str[-1]
+zone_churn = zone_churn.sort_values('churn_rate', ascending=False)
+
+colors_zone = ['#DC2626' if v > 15 else '#F59E0B' if v > 10 else '#16A34A'
+               for v in zone_churn['churn_rate']]
+
+bars = ax.bar(zone_churn['zone_short'], zone_churn['churn_rate'],
+              color=colors_zone, edgecolor='white', linewidth=1.5, width=0.5)
+
+for bar, val in zip(bars, zone_churn['churn_rate']):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+            f"{val:.1f}%", ha='center', fontsize=12,
+            fontweight='bold', color='#0F172A')
+
+ax.axhline(y=5, color='#64748B', linestyle='--',
+           linewidth=1.5, label='Target churn: 5%')
+
+ax.set_title("Partner Churn Rate by Zone\n(Zone B is the most affected)",
+             fontsize=13, fontweight='bold', color='#0F172A', pad=12)
+ax.set_ylabel("Churn Rate (%)", fontsize=10, color='#475569')
+ax.set_xlabel("Zone", fontsize=10, color='#475569')
+ax.set_ylim(0, max(zone_churn['churn_rate']) + 8)
+ax.tick_params(colors='#475569')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_color('#E2E8F0')
+ax.spines['bottom'].set_color('#E2E8F0')
+ax.legend(fontsize=9, frameon=False)
+
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_graph2_zone.png",
+            dpi=200, bbox_inches='tight', facecolor='white')
+plt.show()
+print("Slide 2 Graph 2 saved.")
+
+
+# ==============================================================
+# SLIDE 2 — GRAPH 3: Churn Rate by Onboarding Cohort
+# ==============================================================
+
+fig, ax = plt.subplots(figsize=(8, 5))
+fig.patch.set_facecolor('white')
+ax.set_facecolor('#F8FAFC')
+
+profiles['cohort'] = pd.cut(profiles['onboarding_month'],
+                              bins=[0, 3, 6, 18],
+                              labels=['Early\n(Mo 1–3)', 'Mid\n(Mo 4–6)', 'Late\n(Mo 7–18)'])
+
+cohort_churn = profiles.groupby('cohort').agg(
+    churn_rate   =('is_active', lambda x: (x == 0).mean() * 100),
+    avg_discount =('discount_offered_pct', 'mean')
+).reset_index()
+
+colors_cohort = ['#F59E0B', '#DC2626', '#16A34A']
+
+bars = ax.bar(cohort_churn['cohort'], cohort_churn['churn_rate'],
+              color=colors_cohort, edgecolor='white', linewidth=1.5, width=0.5)
+
+for bar, val in zip(bars, cohort_churn['churn_rate']):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+            f"{val:.1f}%", ha='center', fontsize=12,
+            fontweight='bold', color='#0F172A')
+
+ax.axhline(y=5, color='#64748B', linestyle='--',
+           linewidth=1.5, label='Target churn: 5%')
+
+ax.set_title("Churn Rate by Onboarding Cohort\n(Mid cohort joined during the discount campaign)",
+             fontsize=13, fontweight='bold', color='#0F172A', pad=12)
+ax.set_ylabel("Churn Rate (%)", fontsize=10, color='#475569')
+ax.set_xlabel("Cohort", fontsize=10, color='#475569')
+ax.set_ylim(0, max(cohort_churn['churn_rate']) + 8)
+ax.tick_params(colors='#475569')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_color('#E2E8F0')
+ax.spines['bottom'].set_color('#E2E8F0')
+ax.legend(fontsize=9, frameon=False)
+
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_graph3_cohort.png",
+            dpi=200, bbox_inches='tight', facecolor='white')
+plt.show()
+print("Slide 2 Graph 3 saved.")
+
+
+# ==============================================================
+# SLIDE 3 — Prep Time x Discount → Cancellation Rate
+# ==============================================================
+
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+fig.patch.set_facecolor('white')
+fig.suptitle("Slide 3  |  Root Cause — High Discount + High Prep Time = Cancellations",
+             fontsize=13, fontweight='bold', color='#0F172A', y=1.02)
+
+profiles['high_prep'] = profiles['avg_prep_time_min'] > 25
+profiles['high_disc']  = profiles['discount_offered_pct'] > 20
+
+# ── Left: 2x2 Heatmap ─────────────────────────────────────────
+ax = axes[0]
+ax.set_facecolor('#F8FAFC')
+
+interaction = profiles.groupby(['high_prep', 'high_disc'])['cancellation_rate_pct'].mean().unstack()
+interaction.index   = ['Normal Prep\n(≤25 min)', 'High Prep\n(>25 min)']
+interaction.columns = ['Low Discount\n(≤20%)',   'High Discount\n(>20%)']
+
+data = interaction.values
+im   = ax.imshow(data, cmap='RdYlGn_r', vmin=0, vmax=18, aspect='auto')
+
+for i in range(2):
+    for j in range(2):
+        val   = data[i][j]
+        emoji = '✅' if val < 4 else ('⚠️' if val < 9 else '🔴')
+        ax.text(j, i, f"{emoji}\n{val:.1f}%",
+                ha='center', va='center',
+                fontsize=15, fontweight='bold',
+                color='white' if val > 10 else '#0F172A')
+
+ax.set_xticks([0, 1])
+ax.set_yticks([0, 1])
+ax.set_xticklabels(interaction.columns, fontsize=11, color='#0F172A')
+ax.set_yticklabels(interaction.index,   fontsize=11, color='#0F172A')
+ax.set_title("Cancellation Rate: Prep Time × Discount\n(Top-right = the danger zone)",
+             fontsize=11, fontweight='bold', color='#0F172A', pad=12)
+
+cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+cbar.set_label('Avg Cancellation Rate (%)', fontsize=9, color='#475569')
+cbar.ax.tick_params(labelcolor='#475569')
+
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+
+# ── Right: Scatter — Discount vs Prep Time coloured by cancel rate
+ax = axes[1]
+ax.set_facecolor('#F8FAFC')
+
+low_c  = profiles[profiles['cancellation_rate_pct'] <= 4]
+mid_c  = profiles[(profiles['cancellation_rate_pct'] > 4) &
+                   (profiles['cancellation_rate_pct'] <= 8)]
+high_c = profiles[profiles['cancellation_rate_pct'] > 8]
+
+ax.scatter(low_c['discount_offered_pct'],  low_c['avg_prep_time_min'],
+           color='#16A34A', alpha=0.75, s=65, label='Low Cancel (≤4%)',    zorder=3)
+ax.scatter(mid_c['discount_offered_pct'],  mid_c['avg_prep_time_min'],
+           color='#F59E0B', alpha=0.75, s=65, label='Medium Cancel (4–8%)', zorder=3)
+ax.scatter(high_c['discount_offered_pct'], high_c['avg_prep_time_min'],
+           color='#DC2626', alpha=0.85, s=80, label='High Cancel (>8%)',   zorder=4)
+
+ax.axvline(x=20, color='#64748B', linestyle='--',
+           linewidth=1.2, label='Discount threshold: 20%')
+ax.axhline(y=25, color='#64748B', linestyle=':',
+           linewidth=1.2, label='Prep time threshold: 25 min')
+
+ax.axvspan(20, profiles['discount_offered_pct'].max() + 1,
+           ymin=0.5, alpha=0.07, color='#DC2626')
+ax.text(profiles['discount_offered_pct'].max() - 3,
+        profiles['avg_prep_time_min'].max() - 2,
+        'Danger\nZone', fontsize=10, color='#DC2626',
+        fontweight='bold', ha='center', alpha=0.8)
+
+ax.set_title("Every Restaurant Plotted\nRed dots cluster in top-right corner",
+             fontsize=11, fontweight='bold', color='#0F172A', pad=12)
+ax.set_xlabel("Discount Offered (%)", fontsize=10, color='#475569')
+ax.set_ylabel("Avg Prep Time (minutes)", fontsize=10, color='#475569')
+ax.tick_params(colors='#475569')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_color('#E2E8F0')
+ax.spines['bottom'].set_color('#E2E8F0')
+ax.legend(fontsize=8, frameon=True, facecolor='white',
+          edgecolor='#E2E8F0', loc='upper left')
+
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide3_chart.png",
+            dpi=200, bbox_inches='tight', facecolor='white')
+plt.show()
