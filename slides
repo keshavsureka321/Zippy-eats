@@ -1,0 +1,262 @@
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+# Load data
+profiles = pd.read_csv(r"C:\Users\Keshav\Downloads\zippyeats restaurant profiles.csv")
+trends   = pd.read_csv(r"C:\Users\Keshav\Downloads\zippyeats monthly trends.csv")
+
+profiles['high_prep'] = profiles['avg_prep_time_min'] > 25
+profiles['high_disc']  = profiles['discount_offered_pct'] > 20
+profiles['cohort']     = pd.cut(profiles['onboarding_month'],
+                                 bins=[0, 3, 6, 18],
+                                 labels=['Early (Mo 1-3)', 'Mid (Mo 4-6)', 'Late (Mo 7-18)'])
+
+# ==============================================================
+# SLIDE 2 — GRAPH 1: Cancellation Rate by Cuisine
+# ==============================================================
+plt.figure(figsize=(8, 5))
+cancel_by_cuisine = profiles.groupby('cuisine_type')['cancellation_rate_pct'].mean().sort_values()
+platform_avg      = profiles['cancellation_rate_pct'].mean()
+colors            = ['#16A34A' if v < platform_avg else '#DC2626' for v in cancel_by_cuisine]
+
+bars = plt.barh(cancel_by_cuisine.index, cancel_by_cuisine.values,
+                color=colors, edgecolor='white')
+for bar, val in zip(bars, cancel_by_cuisine.values):
+    plt.text(val + 0.1, bar.get_y() + bar.get_height()/2,
+             f"{val:.1f}%", va='center', fontsize=10, fontweight='bold')
+
+plt.axvline(x=platform_avg, color='grey', linestyle='--',
+            label=f"Platform avg: {platform_avg:.1f}%")
+plt.title("Cancellation Rate by Cuisine\n(Red = above platform average)", fontweight='bold')
+plt.xlabel("Avg Cancellation Rate (%)")
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_cuisine.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 2 Graph 1 saved.")
+
+
+# ==============================================================
+# SLIDE 2 — GRAPH 2: Churn Rate by Zone
+# ==============================================================
+plt.figure(figsize=(7, 5))
+zone_churn = profiles.groupby('city_zone').agg(
+    churn_rate=('is_active', lambda x: (x == 0).mean() * 100)
+).reset_index().sort_values('churn_rate', ascending=False)
+zone_churn['zone_short'] = zone_churn['city_zone'].str.split(' - ').str[-1]
+
+colors = ['#DC2626' if v > 15 else '#F59E0B' if v > 10 else '#16A34A'
+          for v in zone_churn['churn_rate']]
+bars = plt.bar(zone_churn['zone_short'], zone_churn['churn_rate'],
+               color=colors, edgecolor='white', width=0.5)
+for bar, val in zip(bars, zone_churn['churn_rate']):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+             f"{val:.1f}%", ha='center', fontsize=11, fontweight='bold')
+
+plt.axhline(y=5, color='grey', linestyle='--', label='Target: 5%')
+plt.title("Partner Churn Rate by Zone", fontweight='bold')
+plt.ylabel("Churn Rate (%)")
+plt.ylim(0, max(zone_churn['churn_rate']) + 8)
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_zone.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 2 Graph 2 saved.")
+
+
+# ==============================================================
+# SLIDE 2 — GRAPH 3: Churn Rate by Onboarding Cohort
+# ==============================================================
+plt.figure(figsize=(7, 5))
+cohort_churn = profiles.groupby('cohort').agg(
+    churn_rate=('is_active', lambda x: (x == 0).mean() * 100)
+).reset_index()
+
+colors = ['#DC2626', '#DC2626', '#16A34A']
+bars = plt.bar(cohort_churn['cohort'], cohort_churn['churn_rate'],
+               color=colors, edgecolor='white', width=0.5)
+for bar, val in zip(bars, cohort_churn['churn_rate']):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.3,
+             f"{val:.1f}%", ha='center', fontsize=11, fontweight='bold')
+
+plt.axhline(y=5, color='grey', linestyle='--', label='Target: 5%')
+plt.title("Churn Rate by Onboarding Cohort\n(Early cohorts joined during discount campaign)", fontweight='bold')
+plt.ylabel("Churn Rate (%)")
+plt.ylim(0, max(cohort_churn['churn_rate']) + 8)
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide2_cohort.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 2 Graph 3 saved.")
+
+
+# ==============================================================
+# SLIDE 3 — GRAPH 1: 2x2 Interaction Bar Chart
+# ==============================================================
+plt.figure(figsize=(8, 5))
+interaction = profiles.groupby(['high_prep', 'high_disc'])['cancellation_rate_pct'].mean().unstack()
+interaction.index   = ['Normal Prep (<=25 min)', 'High Prep (>25 min)']
+interaction.columns = ['Low Discount (<=20%)', 'High Discount (>20%)']
+
+x     = np.arange(2)
+width = 0.35
+bars1 = plt.bar(x - width/2, interaction['Low Discount (<=20%)'],
+                width, color='#0D9488', edgecolor='white', label='Low Discount (<=20%)')
+bars2 = plt.bar(x + width/2, interaction['High Discount (>20%)'],
+                width, color='#DC2626', edgecolor='white', label='High Discount (>20%)')
+
+for bar, val in zip(bars1, interaction['Low Discount (<=20%)']):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+             f"{val:.1f}%", ha='center', fontsize=11, fontweight='bold')
+for bar, val in zip(bars2, interaction['High Discount (>20%)']):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+             f"{val:.1f}%", ha='center', fontsize=11, fontweight='bold')
+
+plt.xticks(x, interaction.index)
+plt.title("2x2: Prep Time x Discount → Cancellation Rate\n(High Prep + High Discount = 6x worse)", fontweight='bold')
+plt.ylabel("Avg Cancellation Rate (%)")
+plt.ylim(0, 18)
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide3_2x2.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 3 Graph 1 saved.")
+
+
+# ==============================================================
+# SLIDE 3 — GRAPH 2: Scatter (Discount vs Prep Time)
+# ==============================================================
+plt.figure(figsize=(8, 5))
+low_c  = profiles[profiles['cancellation_rate_pct'] <= 4]
+mid_c  = profiles[(profiles['cancellation_rate_pct'] > 4) & (profiles['cancellation_rate_pct'] <= 8)]
+high_c = profiles[profiles['cancellation_rate_pct'] > 8]
+
+plt.scatter(low_c['discount_offered_pct'],  low_c['avg_prep_time_min'],
+            color='#16A34A', alpha=0.75, s=65, label='Low Cancel (<=4%)')
+plt.scatter(mid_c['discount_offered_pct'],  mid_c['avg_prep_time_min'],
+            color='#F59E0B', alpha=0.75, s=65, label='Medium Cancel (4-8%)')
+plt.scatter(high_c['discount_offered_pct'], high_c['avg_prep_time_min'],
+            color='#DC2626', alpha=0.85, s=80, label='High Cancel (>8%)')
+
+plt.axvline(x=20, color='grey', linestyle='--', label='Discount threshold: 20%')
+plt.axhline(y=25, color='grey', linestyle=':',  label='Prep time threshold: 25 min')
+plt.text(profiles['discount_offered_pct'].max() - 3,
+         profiles['avg_prep_time_min'].max() - 2,
+         'Danger\nZone', fontsize=11, color='#DC2626', fontweight='bold', ha='center')
+
+plt.title("Every Restaurant: Discount vs Prep Time\n(Red dots cluster in the danger zone)", fontweight='bold')
+plt.xlabel("Discount Offered (%)")
+plt.ylabel("Avg Prep Time (minutes)")
+plt.legend(fontsize=9)
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide3_scatter.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 3 Graph 2 saved.")
+
+
+# ==============================================================
+# SLIDE 4 — GRAPH 1: At-Risk Segments Bar Chart
+# ==============================================================
+plt.figure(figsize=(7, 4))
+segments    = ['High Prep +\nHigh Discount', 'Cancel Rate\n> 8%', 'Rating\nBelow 3.8']
+avg_cancels = [11.7, 11.2, 9.4]
+counts      = [12, 18, 14]
+colors      = ['#DC2626', '#DC2626', '#F59E0B']
+
+bars = plt.bar(segments, avg_cancels, color=colors, edgecolor='white', width=0.5)
+for bar, val, n in zip(bars, avg_cancels, counts):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+             f"{val}%\n(n={n})", ha='center', fontsize=10, fontweight='bold')
+
+plt.axhline(y=8, color='grey', linestyle='--', label='Risk threshold: 8%')
+plt.title("Avg Cancellation Rate by At-Risk Segment\n(40 active restaurants at risk right now)", fontweight='bold')
+plt.ylabel("Avg Cancellation Rate (%)")
+plt.ylim(0, 15)
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide4_atrisk_segments.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 4 Graph 1 saved.")
+
+
+# ==============================================================
+# SLIDE 4 — GRAPH 2: Highest Risk Segments Churn
+# ==============================================================
+plt.figure(figsize=(6, 4))
+segments2 = ['Multi-cuisine', 'Zone B']
+churns    = [38, 25]
+colors2   = ['#DC2626', '#B45309']
+
+bars = plt.barh(segments2, churns, color=colors2, edgecolor='white')
+for bar, val in zip(bars, churns):
+    plt.text(val + 0.5, bar.get_y() + bar.get_height()/2,
+             f"{val}%", va='center', fontsize=12, fontweight='bold')
+
+plt.axvline(x=5, color='grey', linestyle='--', label='Target churn: 5%')
+plt.title("Highest Risk Segments — Churn Rate", fontweight='bold')
+plt.xlabel("Churn Rate (%)")
+plt.xlim(0, 50)
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide4_highest_risk.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 4 Graph 2 saved.")
+
+
+# ==============================================================
+# SLIDE 4 — GRAPH 3: Desserts vs Platform Order Volume
+# ==============================================================
+plt.figure(figsize=(6, 4))
+labels = ['Desserts\n(Churned)', 'Platform\nAverage']
+values = [208, 148]
+colors3 = ['#F59E0B', '#0D9488']
+
+bars = plt.bar(labels, values, color=colors3, edgecolor='white', width=0.4)
+for bar, val in zip(bars, values):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
+             f"{val}", ha='center', fontsize=12, fontweight='bold')
+
+plt.title("Monthly Order Volume: Desserts vs Platform\n(Desserts have enough orders — but thin margins)", fontweight='bold')
+plt.ylabel("Avg Monthly Orders")
+plt.ylim(0, 260)
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide4_desserts_orders.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 4 Graph 3 saved.")
+
+
+# ==============================================================
+# SLIDE 5 — GRAPH: Expected Impact of Recommendations
+# ==============================================================
+plt.figure(figsize=(8, 4))
+recs    = ['01 Fix Discount\nStructure', '02 At-Risk\nIntervention', '03 Fix Onboarding\nFilter']
+current = [15.2, 14.0, 19.7]
+target  = [8.0,   8.0,  5.0]
+x       = np.arange(3)
+width   = 0.35
+
+bars1 = plt.bar(x - width/2, current, width, color='#DC2626',
+                edgecolor='white', label='Current')
+bars2 = plt.bar(x + width/2, target,  width, color='#16A34A',
+                edgecolor='white', label='Target')
+
+for bar, val in zip(bars1, current):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+             f"{val}%", ha='center', fontsize=10, fontweight='bold', color='#DC2626')
+for bar, val in zip(bars2, target):
+    plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+             f"{val}%", ha='center', fontsize=10, fontweight='bold', color='#16A34A')
+
+plt.xticks(x, recs)
+plt.title("Recommendations: Current State vs Target\n(What each intervention is designed to fix)", fontweight='bold')
+plt.ylabel("Rate (%)")
+plt.legend()
+plt.tight_layout()
+plt.savefig(r"C:\Users\Keshav\OneDrive\Desktop\slide5_impact.png", dpi=200, bbox_inches='tight')
+plt.show()
+print("Slide 5 Graph saved.")
+
+print("\n All graphs saved to Desktop.")
